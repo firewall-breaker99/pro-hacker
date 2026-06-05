@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NETRUNNER // Hack the Planet</title>
+  <style>
+    /* =============================================
+       GLOBAL STYLES & CSS VARIABLES
+       ============================================= */
+    :root {
+      --green:      #00ff88;
+      --green-dim:  #00cc66;
+      --green-dark: #003322;
+      --red:        #ff3355;
+      --yellow:     #ffdd00;
+      --bg:         #050f0a;
+      --panel:      #091a10;
+      --border:     #00ff8844;
+      --text:       #aaffcc;
+      --font-mono:  'Courier New', Courier, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--green);
+      font-family: var(--font-mono);
+      height: 100vh;
+      overflow: hidden;
+      /* Subtle scanline effect using repeating gradient */
+      background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+    }
+
+    /* =============================================
+       SCREEN MANAGEMENT
+       Each "screen" div is shown/hidden via JS
+       ============================================= */
+    .screen { display: none; width: 100vw; height: 100vh; }
+    .screen.active { display: flex; }
+
+    /* =============================================
+       START SCREEN
+       ============================================= */
+    #startScreen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      text-align: center;
+    }
+
+    .title-block {
+      line-height: 1.1;
+    }
+
+    /* ASCII-style glitch title */
+    .title-main {
+      font-size: clamp(40px, 8vw, 80px);
+      font-weight: bold;
+      color: var(--green);
+      text-shadow:
+        0 0 10px var(--green),
+        0 0 30px var(--green-dim),
+        2px 2px 0 var(--red);       /* chromatic-aberration shadow */
+      letter-spacing: 6px;
+      animation: flicker 4s infinite;
+    }
+
+    .title-sub {
+      font-size: clamp(12px, 2vw, 18px);
+      color: var(--text);
+      letter-spacing: 8px;
+      opacity: 0.7;
+      margin-top: 8px;
+    }
+
+    /* Flicker animation for the title */
+    @keyframes flicker {
+      0%, 95%, 100% { opacity: 1; }
+      96%            { opacity: 0.4; }
+      97%            { opacity: 1; }
+      98%            { opacity: 0.2; }
+      99%            { opacity: 1; }
+    }
+
+    /* Info card on the start screen */
+    .info-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 20px 32px;
+      max-width: 480px;
+      text-align: left;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.8;
+    }
+
+    .info-card span { color: var(--yellow); }
+
+    /* The glowing green "button" */
+    .btn {
+      background: transparent;
+      border: 2px solid var(--green);
+      color: var(--green);
+      font-family: var(--font-mono);
+      font-size: 18px;
+      letter-spacing: 4px;
+      padding: 14px 48px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+
+    .btn:hover {
+      background: var(--green);
+      color: var(--bg);
+      box-shadow: 0 0 24px var(--green);
+    }
+
+    /* JACK OUT button — yellow/warning style, sits in the HUD */
+    #jackOutBtn {
+      background: transparent;
+      border: 2px solid var(--yellow);
+      color: var(--yellow);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      padding: 6px 16px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+
+    #jackOutBtn:hover {
+      background: var(--yellow);
+      color: var(--bg);
+      box-shadow: 0 0 16px var(--yellow);
+    }
+
+    /* =============================================
+       HUD (Heads-Up Display) — shown during game
+       ============================================= */
+    #hud {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: none;                 /* shown when game starts */
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: rgba(5,15,10,0.9);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+      font-size: 13px;
+    }
+
+    #hud.visible { display: flex; }
+
+    .hud-item { display: flex; flex-direction: column; gap: 2px; }
+    .hud-label { color: var(--text); opacity: 0.6; font-size: 10px; letter-spacing: 2px; }
+    .hud-value { color: var(--green); font-size: 16px; font-weight: bold; }
+    #moneyDisplay { color: var(--yellow); }
+
+    /* Trace bar (the danger meter) */
+    #traceBarWrap {
+      flex: 1;
+      max-width: 200px;
+      margin: 0 24px;
+    }
+    #traceBarBg {
+      height: 6px;
+      background: #112;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    #traceBarFill {
+      height: 100%;
+      width: 0%;
+      background: var(--red);
+      transition: width 0.3s, background 0.3s;
+      border-radius: 3px;
+    }
+
+    /* =============================================
+       GAME SCREEN — the main play area
+       ============================================= */
+    #gameScreen {
+      flex-direction: column;
+      padding-top: 52px;   /* room for HUD */
+    }
+
+    #gameArea {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      padding: 16px;
+      gap: 16px;
+    }
+
+    /* ---- LEFT PANEL: target list ---- */
+    #targetPanel {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 12px;
+      overflow-y: auto;
+    }
+
+    .panel-title {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--text);
+      opacity: 0.5;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+
+    /* Each hackable target */
+    .target-item {
+      background: #0a1f14;
+      border: 1px solid #1a3a28;
+      padding: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .target-item:hover { border-color: var(--green); background: #0f2a1a; }
+    .target-item.selected { border-color: var(--green); background: var(--green-dark); }
+    .target-item.hacked { border-color: #333; opacity: 0.4; cursor: default; }
+
+    .target-name { font-size: 12px; color: var(--green); margin-bottom: 4px; }
+    .target-reward { font-size: 11px; color: var(--yellow); }
+    .target-difficulty { font-size: 10px; color: var(--text); opacity: 0.6; margin-top: 2px; }
+
+    /* ---- CENTER: mini-game canvas ---- */
+    #centerPanel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    #canvas {
+      flex: 1;
+      background: #020a05;
+      border: 1px solid var(--border);
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* ---- RIGHT PANEL: terminal log ---- */
+    #logPanel {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 12px;
+      overflow-y: auto;
+      font-size: 11px;
+    }
+
+    .log-line { margin-bottom: 4px; line-height: 1.5; }
+    .log-line.ok   { color: var(--green); }
+    .log-line.warn { color: var(--yellow); }
+    .log-line.err  { color: var(--red); }
+    .log-line.info { color: var(--text); opacity: 0.7; }
+
+    /* =============================================
+       DAY END OVERLAY
+       Full-screen flash shown between days
+       ============================================= */
+    #dayEndOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      text-align: center;
+      animation: fadeInOverlay 0.3s ease;
+    }
+
+    #dayEndOverlay.visible { display: flex; }
+
+    @keyframes fadeInOverlay {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+
+    #dayEndOverlay .day-label {
+      font-size: 11px;
+      letter-spacing: 5px;
+      color: var(--text);
+      opacity: 0.6;
+    }
+
+    #dayEndOverlay .day-number {
+      font-size: clamp(52px, 10vw, 96px);
+      font-weight: bold;
+      color: var(--green);
+      text-shadow: 0 0 30px var(--green);
+      letter-spacing: 4px;
+      line-height: 1;
+    }
+
+    #dayEndOverlay .day-earned {
+      font-size: 16px;
+      color: var(--yellow);
+      letter-spacing: 2px;
+    }
+
+    #dayEndOverlay .day-continue {
+      font-size: 11px;
+      color: var(--text);
+      opacity: 0.5;
+      margin-top: 8px;
+      animation: blink 1.2s step-end infinite;
+    }
+
+    /* DAY counter in HUD */
+    #dayDisplay { color: var(--green); }
+
+    /* Choice buttons inside the day-end overlay */
+    .day-btn {
+      background: transparent;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 3px;
+      padding: 12px 28px;
+      cursor: pointer;
+      text-transform: uppercase;
+      border: 2px solid var(--green);
+      color: var(--green);
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+
+    .day-btn:hover {
+      background: var(--green);
+      color: var(--bg);
+      box-shadow: 0 0 20px var(--green);
+    }
+
+    /* "Lie Low" button uses yellow */
+    .day-btn.lie-btn {
+      border-color: var(--yellow);
+      color: var(--yellow);
+    }
+
+    .day-btn.lie-btn:hover {
+      background: var(--yellow);
+      color: var(--bg);
+      box-shadow: 0 0 20px var(--yellow);
+    }
+
+    /* Colour the trace number based on danger */
+    #traceRevealNumber.safe   { color: var(--green); text-shadow: 0 0 20px var(--green); }
+    #traceRevealNumber.caution{ color: var(--yellow);text-shadow: 0 0 20px var(--yellow);}
+    #traceRevealNumber.danger { color: var(--red);   text-shadow: 0 0 20px var(--red);   }
+    #endScreen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      text-align: center;
+    }
+
+    #endTitle {
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: bold;
+      letter-spacing: 4px;
+    }
+
+    #endTitle.win  { color: var(--green); text-shadow: 0 0 20px var(--green); }
+    #endTitle.lose { color: var(--red);   text-shadow: 0 0 20px var(--red); }
+
+    #endSummary { color: var(--text); font-size: 14px; line-height: 2; }
+
+    /* =============================================
+       UTILITY: blinking cursor
+       ============================================= */
+    .blink {
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+</head>
+<body>
+
+  <!-- ================================================
+       START SCREEN
+       ================================================ -->
+  <div id="startScreen" class="screen active">
+    <div class="title-block">
+      <div class="title-main">NETRUNNER</div>
+      <div class="title-sub">// HACK THE PLANET //</div>
+    </div>
+
+    <div class="info-card">
+      <p>
+        <span>OBJECTIVE:</span> Hack corporate servers to steal ¥¥¥.<br>
+        Click nodes on the network grid to breach them.<br>
+        Each breach fills the <span>TRACE METER</span> — if it hits 100%,
+        the ICE traces you and it's game over.
+      </p>
+      <br>
+      <p>
+        <span>CONTROLS:</span><br>
+        → Select a <span>TARGET</span> in the left panel<br>
+        → <span>CLICK</span> glowing nodes on the canvas<br>
+        → Crack enough nodes to hack the target<br>
+        → <span>R</span> to reboot (reset trace — costs time)<br>
+        → <span>[ JACK OUT ]</span> to escape with your credits anytime
+      </p>
+    </div>
+
+    <button class="btn" id="startBtn">[ JACK IN ]</button>
+  </div>
+
+  <!-- ================================================
+       HUD — always on top during gameplay
+       ================================================ -->
+  <div id="hud">
+    <div class="hud-item">
+      <span class="hud-label">CREDITS</span>
+      <span class="hud-value" id="moneyDisplay">¥0</span>
+    </div>
+    <!-- DAY counter — increments after each successful hack -->
+    <div class="hud-item">
+      <span class="hud-label">DAY</span>
+      <span class="hud-value" id="dayDisplay">1</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">TARGET</span>
+      <span class="hud-value" id="targetDisplay">---</span>
+    </div>
+    <div id="traceBarWrap" style="display:none;">
+      <div id="traceBarBg"><div id="traceBarFill"></div></div>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">HACKS</span>
+      <span class="hud-value" id="hacksDisplay">0 / 5</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">TIME</span>
+      <span class="hud-value" id="timerDisplay">90</span>
+    </div>
+    <!-- JACK OUT: lets the player escape with current credits -->
+    <div class="hud-item">
+      <button id="jackOutBtn">[ JACK OUT ]</button>
+    </div>
+  </div>
+
+  <!-- ================================================
+       DAY END OVERLAY — shown after each hack with a choice
+       ================================================ -->
+  <div id="dayEndOverlay">
+    <div class="day-label">// DAY COMPLETE //</div>
+    <div class="day-number" id="dayEndNumber">DAY 1</div>
+    <div class="day-earned" id="dayEndEarned">+¥0</div>
+
+    <!-- Step 1: the two choices -->
+    <div id="dayChoices">
+      <p style="color:var(--text);font-size:12px;letter-spacing:2px;margin-bottom:18px;opacity:0.7;">
+        WHAT DO YOU DO NEXT?
+      </p>
+      <div style="display:flex;gap:16px;justify-content:center;">
+        <button class="day-btn" id="hackAgainBtn">[ HACK AGAIN ]</button>
+        <button class="day-btn lie-btn" id="lieLowBtn">[ LIE LOW ]</button>
+      </div>
+    </div>
+
+    <!-- Step 2: shown only when "lie low" chosen — reveals trace % for 10s -->
+    <div id="lieLowReveal" style="display:none;text-align:center;">
+      <p style="color:var(--yellow);font-size:11px;letter-spacing:3px;margin-bottom:12px;">
+        // GOING DARK — SCANNING ICE ACTIVITY //
+      </p>
+      <!-- The big trace number -->
+      <div style="font-size:clamp(48px,9vw,88px);font-weight:bold;letter-spacing:4px;" id="traceRevealNumber">0%</div>
+      <div style="font-size:11px;color:var(--text);opacity:0.6;margin-top:6px;" id="traceRevealLabel">ICE TRACE</div>
+      <!-- Countdown bar -->
+      <div style="width:200px;height:4px;background:#112;border:1px solid var(--border);border-radius:2px;margin:16px auto 0;">
+        <div id="lieLowCountdown" style="height:100%;width:100%;background:var(--yellow);border-radius:2px;transition:width 0.1s linear;"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text);opacity:0.4;margin-top:6px;" id="lieLowTimer">10s</div>
+    </div>
+  </div>
+
+  <!-- ================================================
+       GAME SCREEN
+       ================================================ -->
+  <div id="gameScreen" class="screen">
+    <div id="gameArea">
+
+      <!-- Left: target list -->
+      <div id="targetPanel">
+        <div class="panel-title">// TARGETS //</div>
+        <!-- Targets are injected here by JavaScript -->
+      </div>
+
+      <!-- Center: canvas mini-game -->
+      <div id="centerPanel">
+        <canvas id="canvas"></canvas>
+      </div>
+
+      <!-- Right: terminal log -->
+      <div id="logPanel">
+        <div class="panel-title">// TERMINAL //</div>
+        <div id="logLines">
+          <div class="log-line info">System ready<span class="blink">_</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================
+       END SCREEN
+       ================================================ -->
+  <div id="endScreen" class="screen">
+    <div id="endTitle">GAME OVER</div>
+    <div id="endSummary"></div>
+    <button class="btn" id="restartBtn">[ RESTART ]</button>
+  </div>
+
+
+  <script>
+    // =============================================
+    //  GAME STATE
+    //  All the data the game needs to run
+    // =============================================
+    const state = {
+      money:       0,           // player's credits (the "money counter")
+      trace:       0,           // ICE trace level 0–100
+      timeLeft:    90,          // seconds on the clock
+      hacksTotal:  0,           // total successful hacks this session
+      hacksNeeded: 10,          // complete this many hacks to win
+      day:         1,           // current day number (advances after each hack)
+      selectedTarget: null,     // which target is currently selected
+      nodes:       [],          // network nodes drawn on the canvas
+      timerId:     null,        // reference to setInterval for the clock
+      rebooting:   false,       // true while reboot animation is running
+    };
+
+    // =============================================
+    //  TARGETS
+    //  Each target has a name, reward, and difficulty
+    //  (difficulty = how much trace each node adds)
+    // =============================================
+    const TARGETS = [
+      // --- LOW difficulty (trace 5–9, reward 150–350) ---
+      { id:  1, name: "Corner Store POS",      reward: 150,  difficulty: "LOW",    tracePerNode:  5, nodesNeeded: 3 },
+      { id:  2, name: "Local ISP Node",         reward: 180,  difficulty: "LOW",    tracePerNode:  6, nodesNeeded: 3 },
+      { id:  3, name: "Neon Exchange",          reward: 250,  difficulty: "LOW",    tracePerNode:  7, nodesNeeded: 4 },
+      { id:  4, name: "Campus WiFi Hub",        reward: 200,  difficulty: "LOW",    tracePerNode:  6, nodesNeeded: 3 },
+      { id:  5, name: "Street Kiosk Network",   reward: 160,  difficulty: "LOW",    tracePerNode:  5, nodesNeeded: 4 },
+      { id:  6, name: "Temp Agency Server",     reward: 220,  difficulty: "LOW",    tracePerNode:  7, nodesNeeded: 3 },
+      { id:  7, name: "Parking Authority DB",   reward: 270,  difficulty: "LOW",    tracePerNode:  8, nodesNeeded: 4 },
+      { id:  8, name: "Diner Point-of-Sale",    reward: 190,  difficulty: "LOW",    tracePerNode:  6, nodesNeeded: 3 },
+
+      // --- MEDIUM difficulty (trace 10–14, reward 400–700) ---
+      { id:  9, name: "City Bank",              reward: 500,  difficulty: "MEDIUM", tracePerNode: 12, nodesNeeded: 4 },
+      { id: 10, name: "Transit Authority",      reward: 450,  difficulty: "MEDIUM", tracePerNode: 11, nodesNeeded: 4 },
+      { id: 11, name: "Biotech Startup",        reward: 550,  difficulty: "MEDIUM", tracePerNode: 12, nodesNeeded: 3 },
+      { id: 12, name: "Media Syndicate",        reward: 480,  difficulty: "MEDIUM", tracePerNode: 10, nodesNeeded: 4 },
+      { id: 13, name: "Insurance Mainframe",    reward: 620,  difficulty: "MEDIUM", tracePerNode: 13, nodesNeeded: 4 },
+      { id: 14, name: "Pharma R&D Server",      reward: 590,  difficulty: "MEDIUM", tracePerNode: 12, nodesNeeded: 3 },
+      { id: 15, name: "Shipping Logistics DB",  reward: 430,  difficulty: "MEDIUM", tracePerNode: 10, nodesNeeded: 5 },
+      { id: 16, name: "Stock Exchange Feed",    reward: 700,  difficulty: "MEDIUM", tracePerNode: 14, nodesNeeded: 3 },
+
+      // --- HIGH difficulty (trace 15–19, reward 750–1100) ---
+      { id: 17, name: "MegaCorp HQ",            reward: 800,  difficulty: "HIGH",   tracePerNode: 18, nodesNeeded: 3 },
+      { id: 18, name: "Police Database",        reward: 650,  difficulty: "HIGH",   tracePerNode: 15, nodesNeeded: 3 },
+      { id: 19, name: "Federal Reserve Node",   reward: 950,  difficulty: "HIGH",   tracePerNode: 17, nodesNeeded: 4 },
+      { id: 20, name: "Military Contractor",    reward: 1050, difficulty: "HIGH",   tracePerNode: 19, nodesNeeded: 3 },
+      { id: 21, name: "Orbital Comms Relay",    reward: 880,  difficulty: "HIGH",   tracePerNode: 16, nodesNeeded: 4 },
+      { id: 22, name: "CyberSec Firm Alpha",    reward: 760,  difficulty: "HIGH",   tracePerNode: 15, nodesNeeded: 5 },
+      { id: 23, name: "Nanotech Lab Servers",   reward: 920,  difficulty: "HIGH",   tracePerNode: 18, nodesNeeded: 3 },
+      { id: 24, name: "Intelligence Archive",   reward: 1100, difficulty: "HIGH",   tracePerNode: 19, nodesNeeded: 4 },
+
+      // --- LETHAL difficulty (trace 20–28, reward 1200–2500) ---
+      { id: 25, name: "ShadowNet Server",       reward: 1200, difficulty: "LETHAL", tracePerNode: 25, nodesNeeded: 2 },
+      { id: 26, name: "Black ICE Vault",        reward: 1500, difficulty: "LETHAL", tracePerNode: 24, nodesNeeded: 3 },
+      { id: 27, name: "Ghost Protocol Node",    reward: 1800, difficulty: "LETHAL", tracePerNode: 26, nodesNeeded: 2 },
+      { id: 28, name: "Nexus Core System",      reward: 2000, difficulty: "LETHAL", tracePerNode: 28, nodesNeeded: 2 },
+      { id: 29, name: "AEGIS Defence Grid",     reward: 2200, difficulty: "LETHAL", tracePerNode: 27, nodesNeeded: 3 },
+      { id: 30, name: "Zero-Day Exchange",      reward: 1600, difficulty: "LETHAL", tracePerNode: 23, nodesNeeded: 3 },
+      { id: 31, name: "Darknet Broker Hub",     reward: 1350, difficulty: "LETHAL", tracePerNode: 22, nodesNeeded: 3 },
+      { id: 32, name: "Sovereign AI Cluster",   reward: 2500, difficulty: "LETHAL", tracePerNode: 28, nodesNeeded: 2 },
+      { id: 33, name: "Quantum Cipher Bank",    reward: 1900, difficulty: "LETHAL", tracePerNode: 25, nodesNeeded: 3 },
+      { id: 34, name: "Phantom Relay Array",    reward: 1700, difficulty: "LETHAL", tracePerNode: 24, nodesNeeded: 2 },
+      { id: 35, name: "OMEGA Black Site",       reward: 3000, difficulty: "LETHAL", tracePerNode: 30, nodesNeeded: 2 },
+    ];
+
+    // Track which targets have been fully hacked
+    const hackedTargets = new Set();
+    // For the currently selected target, how many nodes hacked so far
+    let nodesHackedOnTarget = 0;
+
+    // =============================================
+    //  DOM REFERENCES
+    //  Grab all the HTML elements we'll need
+    // =============================================
+    const screens     = { start: document.getElementById('startScreen'),
+                           game:  document.getElementById('gameScreen'),
+                           end:   document.getElementById('endScreen') };
+    const hud         = document.getElementById('hud');
+    const moneyEl     = document.getElementById('moneyDisplay');
+    const targetEl    = document.getElementById('targetDisplay');
+    const traceBar    = document.getElementById('traceBarFill');
+    const hacksEl     = document.getElementById('hacksDisplay');
+    const timerEl     = document.getElementById('timerDisplay');
+    const dayEl       = document.getElementById('dayDisplay');   // DAY counter in HUD
+    const targetPanel = document.getElementById('targetPanel');
+    const logLines    = document.getElementById('logLines');
+    const canvas      = document.getElementById('canvas');
+    const ctx         = canvas.getContext('2d');
+
+    // =============================================
+    //  SCREEN SWITCHING
+    // =============================================
+    function showScreen(name) {
+      Object.values(screens).forEach(s => s.classList.remove('active'));
+      screens[name].classList.add('active');
+    }
+
+    // =============================================
+    //  TERMINAL LOG
+    //  Adds a coloured line to the right panel
+    // =============================================
+    function log(msg, type = 'info') {
+      const line = document.createElement('div');
+      line.className = `log-line ${type}`;
+      line.textContent = '> ' + msg;
+      logLines.appendChild(line);
+      logLines.scrollTop = logLines.scrollHeight; // auto-scroll down
+    }
+
+    // =============================================
+    //  HUD UPDATER
+    //  Call whenever state changes
+    // =============================================
+    function updateHUD() {
+      moneyEl.textContent     = '¥' + state.money.toLocaleString();
+      timerEl.textContent     = state.timeLeft;
+      hacksEl.textContent     = state.hacksTotal + ' / ' + state.hacksNeeded;
+      dayEl.textContent       = state.day;   // show current day
+      traceBar.style.width    = state.trace + '%';
+      // Change trace bar colour based on danger level
+      traceBar.style.background = state.trace < 50 ? '#00ff88'
+                                : state.trace < 75 ? '#ffdd00'
+                                : '#ff3355';
+    }
+
+    // =============================================
+    //  TARGET PANEL
+    //  Renders the list of hackable targets
+    // =============================================
+    function renderTargets() {
+      // Keep the title, rebuild the rest
+      targetPanel.innerHTML = '<div class="panel-title">// TARGETS //</div>';
+      TARGETS.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'target-item' +
+          (hackedTargets.has(t.id)          ? ' hacked'   : '') +
+          (state.selectedTarget?.id === t.id ? ' selected' : '');
+        div.innerHTML = `
+          <div class="target-name">${t.name}</div>
+          <div class="target-reward">¥${t.reward.toLocaleString()}</div>
+          <div class="target-difficulty">[${t.difficulty}]</div>
+        `;
+        if (!hackedTargets.has(t.id)) {
+          div.addEventListener('click', () => selectTarget(t));
+        }
+        targetPanel.appendChild(div);
+      });
+    }
+
+    // =============================================
+    //  SELECT TARGET
+    //  Called when the player clicks a target
+    // =============================================
+    function selectTarget(t) {
+      state.selectedTarget    = t;
+      nodesHackedOnTarget     = 0;
+      targetEl.textContent    = t.name;
+      log(`Selected: ${t.name} [${t.difficulty}]`, 'warn');
+      log(`Need ${t.nodesNeeded} nodes. Trace +${t.tracePerNode}% per node.`, 'info');
+      renderTargets();
+      spawnNodes();          // generate fresh network nodes on canvas
+    }
+
+    // =============================================
+    //  CANVAS & NODES
+    //  The mini-game: click glowing nodes to hack
+    // =============================================
+
+    // Resize the canvas to fill its container
+    function resizeCanvas() {
+      canvas.width  = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+
+    // Create a random set of clickable nodes on the canvas
+    function spawnNodes() {
+      state.nodes = [];
+      const count = 12; // total nodes (only some are "active"/hackable)
+      for (let i = 0; i < count; i++) {
+        // Keep nodes away from the canvas edges
+        const margin = 40;
+        state.nodes.push({
+          x:       margin + Math.random() * (canvas.width  - margin * 2),
+          y:       margin + Math.random() * (canvas.height - margin * 2),
+          radius:  10 + Math.random() * 6,
+          active:  Math.random() > 0.4, // ~60% chance a node is hackable
+          hacked:  false,
+          pulse:   Math.random() * Math.PI * 2, // random start phase for animation
+        });
+      }
+      drawNodes();
+    }
+
+    // Draw all nodes and the connecting "network" lines
+    function drawNodes() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // --- Draw edges (connections between nodes) ---
+      ctx.strokeStyle = 'rgba(0,255,136,0.08)';
+      ctx.lineWidth   = 1;
+      state.nodes.forEach((a, i) => {
+        state.nodes.forEach((b, j) => {
+          if (j <= i) return; // avoid double-drawing
+          const dist = Math.hypot(a.x - b.x, a.y - b.y);
+          if (dist < 160) {  // only connect nearby nodes
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        });
+      });
+
+      // --- Draw nodes ---
+      const t = Date.now() / 800; // time-based value for pulsing
+      state.nodes.forEach(node => {
+        if (node.hacked) {
+          // Hacked nodes are red and dim
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+          ctx.fillStyle = '#331122';
+          ctx.fill();
+          ctx.strokeStyle = '#ff3355';
+          ctx.lineWidth   = 1;
+          ctx.stroke();
+          // X mark
+          ctx.strokeStyle = '#ff335588';
+          ctx.lineWidth   = 2;
+          const r = node.radius * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(node.x - r, node.y - r); ctx.lineTo(node.x + r, node.y + r);
+          ctx.moveTo(node.x + r, node.y - r); ctx.lineTo(node.x - r, node.y + r);
+          ctx.stroke();
+          return;
+        }
+
+        if (node.active) {
+          // Active (hackable) nodes pulse with a green glow
+          const pulse = 0.6 + 0.4 * Math.sin(t + node.pulse);
+          ctx.shadowBlur  = 16 * pulse;
+          ctx.shadowColor = '#00ff88';
+
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+          ctx.fillStyle   = `rgba(0,255,136,${0.15 * pulse})`;
+          ctx.fill();
+          ctx.strokeStyle = `rgba(0,255,136,${pulse})`;
+          ctx.lineWidth   = 2;
+          ctx.stroke();
+
+          // Outer ring pulse
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius + 6 * pulse, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(0,255,136,${0.3 * pulse})`;
+          ctx.lineWidth   = 1;
+          ctx.stroke();
+        } else {
+          // Inactive nodes are just dark outlines
+          ctx.shadowBlur  = 0;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+          ctx.fillStyle   = '#0a1f14';
+          ctx.fill();
+          ctx.strokeStyle = '#1a3a28';
+          ctx.lineWidth   = 1;
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0; // reset shadow after each node
+      });
+    }
+
+    // Animation loop — redraws nodes every frame for the pulse effect
+    let animFrame;
+    function animate() {
+      drawNodes();
+      animFrame = requestAnimationFrame(animate);
+    }
+
+    // =============================================
+    //  CANVAS CLICK — the core game mechanic
+    // =============================================
+    canvas.addEventListener('click', (e) => {
+      if (!state.selectedTarget || state.rebooting) return;
+
+      // Get click position relative to the canvas
+      const rect = canvas.getBoundingClientRect();
+      const mx   = e.clientX - rect.left;
+      const my   = e.clientY - rect.top;
+
+      // Check if click hit any active node
+      let hit = false;
+      state.nodes.forEach(node => {
+        if (node.hacked || !node.active) return;
+        const dist = Math.hypot(mx - node.x, my - node.y);
+        if (dist < node.radius + 6) { // +6 for a forgiving hitbox
+          hit = true;
+          node.hacked = true;
+          nodesHackedOnTarget++;
+
+          // Increase the ICE trace meter
+          state.trace = Math.min(100, state.trace + state.selectedTarget.tracePerNode);
+
+          log(`Node breached! [${nodesHackedOnTarget}/${state.selectedTarget.nodesNeeded}]`, 'ok');
+
+          // Did we crack all needed nodes for this target?
+          if (nodesHackedOnTarget >= state.selectedTarget.nodesNeeded) {
+            hackSuccess();
+          }
+
+          // Did the trace hit 100%?
+          if (state.trace >= 100) {
+            gameOver('TRACED');
+          }
+
+          updateHUD();
+        }
+      });
+
+      if (!hit) {
+        // Missed — small trace penalty
+        state.trace = Math.min(100, state.trace + 2);
+        log('Miss — trace +2%', 'warn');
+        updateHUD();
+        if (state.trace >= 100) gameOver('TRACED');
+      }
+    });
+
+    // =============================================
+    //  HACK SUCCESS
+    //  Shows the Day End overlay with two choices:
+    //  "Hack Again" → dismiss and continue immediately
+    //  "Lie Low"    → reveal ICE trace % for 10s, then continue
+    // =============================================
+    function hackSuccess() {
+      const t = state.selectedTarget;
+      state.money      += t.reward;
+      state.hacksTotal++;
+      hackedTargets.add(t.id);
+
+      log(`✓ ${t.name} HACKED! +¥${t.reward}`, 'ok');
+      log('Transfer complete.', 'ok');
+
+      state.selectedTarget = null;
+      nodesHackedOnTarget  = 0;
+      targetEl.textContent = '---';
+
+      renderTargets();
+      updateHUD();
+
+      // Pause the game timer while the overlay is shown
+      clearInterval(state.timerId);
+
+      // Populate the overlay header
+      document.getElementById('dayEndNumber').textContent = 'DAY ' + state.day;
+      document.getElementById('dayEndEarned').textContent = '+¥' + t.reward.toLocaleString();
+
+      // Make sure we're on the choices view (not lie-low reveal)
+      document.getElementById('dayChoices').style.display  = 'block';
+      document.getElementById('lieLowReveal').style.display = 'none';
+
+      // Show the overlay
+      const overlay = document.getElementById('dayEndOverlay');
+      overlay.classList.add('visible');
+
+      // Advance the day counter for next time
+      state.day++;
+      updateHUD();
+
+      // --- "HACK AGAIN" button ---
+      // Simply close the overlay and resume the timer
+      document.getElementById('hackAgainBtn').onclick = function () {
+        log(`Day ${state.day - 1} done. Back to work.`, 'warn');
+        overlay.classList.remove('visible');
+        if (state.hacksTotal >= state.hacksNeeded) {
+          gameWin();
+        } else {
+          startTimer();
+        }
+      };
+
+      // --- "LIE LOW" button ---
+      // Hide choices, show the ICE trace % for 10 seconds, then resume
+      document.getElementById('lieLowBtn').onclick = function () {
+        log(`Day ${state.day - 1} done. Lying low...`, 'info');
+
+        // Swap views inside the overlay
+        document.getElementById('dayChoices').style.display   = 'none';
+        document.getElementById('lieLowReveal').style.display = 'block';
+
+        // Set the trace number and colour it by danger level
+        const traceNum = document.getElementById('traceRevealNumber');
+        traceNum.textContent = Math.round(state.trace) + '%';
+        traceNum.className =
+          state.trace < 40 ? 'safe' :
+          state.trace < 70 ? 'caution' : 'danger';
+
+        // Animate the countdown bar draining over 10 seconds
+        const bar      = document.getElementById('lieLowCountdown');
+        const timerTxt = document.getElementById('lieLowTimer');
+        let secondsLeft = 10;
+        bar.style.width = '100%';
+
+        const interval = setInterval(() => {
+          secondsLeft--;
+          // Update the drain bar proportionally
+          bar.style.width = (secondsLeft / 10 * 100) + '%';
+          timerTxt.textContent = secondsLeft + 's';
+
+          if (secondsLeft <= 0) {
+            clearInterval(interval);
+
+            // Lying low reduces trace by 10%
+            state.trace = Math.max(0, state.trace - 10);
+            log('Lay low complete. ICE activity reduced by 10%.', 'ok');
+
+            if (state.hacksTotal >= state.hacksNeeded) {
+              overlay.classList.remove('visible');
+              gameWin();
+            } else {
+              // Show the full day-end choice screen for the new day
+              // so the player can lie low again if they want
+              document.getElementById('lieLowReveal').style.display = 'none';
+              overlay.querySelector('.day-label').textContent = '// DAY COMPLETE //';
+
+              document.getElementById('dayEndNumber').textContent = 'DAY ' + state.day;
+              document.getElementById('dayEndEarned').textContent = 'ICE TRACE: ' + Math.round(state.trace) + '%';
+
+              // Show the choices again (Hack Again / Lie Low)
+              document.getElementById('dayChoices').style.display = 'block';
+
+              // Re-wire the buttons for the new day
+              // "Hack Again" — start playing
+              document.getElementById('hackAgainBtn').onclick = function () {
+                log(`Day ${state.day} starting. Back to work.`, 'warn');
+                overlay.classList.remove('visible');
+                state.day++;
+                updateHUD();
+                startTimer();
+              };
+
+              // "Lie Low" — run the lie-low countdown again for this day
+              document.getElementById('lieLowBtn').onclick = function () {
+                log(`Day ${state.day} — lying low again...`, 'info');
+                state.day++;
+                updateHUD();
+
+                document.getElementById('dayChoices').style.display   = 'none';
+                document.getElementById('lieLowReveal').style.display = 'block';
+
+                const traceNum2 = document.getElementById('traceRevealNumber');
+                traceNum2.textContent = Math.round(state.trace) + '%';
+                traceNum2.className =
+                  state.trace < 40 ? 'safe' :
+                  state.trace < 70 ? 'caution' : 'danger';
+
+                const bar2      = document.getElementById('lieLowCountdown');
+                const timerTxt2 = document.getElementById('lieLowTimer');
+                let sl2 = 10;
+                bar2.style.width = '100%';
+
+                const interval2 = setInterval(() => {
+                  sl2--;
+                  bar2.style.width = (sl2 / 10 * 100) + '%';
+                  timerTxt2.textContent = sl2 + 's';
+
+                  if (sl2 <= 0) {
+                    clearInterval(interval2);
+                    state.trace = Math.max(0, state.trace - 10);
+                    log('Lay low complete. ICE activity reduced by 10%.', 'ok');
+
+                    // After second lie-low, show choices for the NEXT day
+                    document.getElementById('lieLowReveal').style.display = 'none';
+                    document.getElementById('dayEndNumber').textContent = 'DAY ' + state.day;
+                    document.getElementById('dayEndEarned').textContent = 'ICE TRACE: ' + Math.round(state.trace) + '%';
+                    document.getElementById('dayChoices').style.display = 'block';
+
+                    document.getElementById('hackAgainBtn').onclick = function () {
+                      log(`Day ${state.day} starting. Back to work.`, 'warn');
+                      overlay.classList.remove('visible');
+                      state.day++;
+                      updateHUD();
+                      startTimer();
+                    };
+                    // Lie low again is not wired here to avoid infinite nesting;
+                    // a full page refresh/restart handles edge cases
+                    document.getElementById('lieLowBtn').onclick = function () {
+                      log(`Can't lie low 3 days in a row — heat is up.`, 'err');
+                    };
+                  }
+                }, 1000);
+              };
+            }
+          }
+        }, 1000);
+      };
+    }
+
+    // =============================================
+    //  REBOOT (press R)
+    //  Reduces trace by 40% but costs 10 seconds
+    // =============================================
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'r' && e.key !== 'R') return;
+      if (state.rebooting) return;
+
+      state.rebooting = true;
+      log('REBOOT initiated... -40% trace, -10s', 'warn');
+
+      setTimeout(() => {
+        state.trace    = Math.max(0, state.trace - 40);
+        state.timeLeft = Math.max(0, state.timeLeft - 10);
+        state.rebooting = false;
+        log('Reboot complete.', 'ok');
+        updateHUD();
+      }, 1500); // 1.5 second delay to make it feel dangerous
+    });
+
+    // =============================================
+    //  COUNTDOWN TIMER
+    // =============================================
+    function startTimer() {
+      state.timerId = setInterval(() => {
+        state.timeLeft--;
+        updateHUD();
+        if (state.timeLeft <= 0) gameOver('TIMEOUT');
+      }, 1000);
+    }
+
+    // =============================================
+    //  GAME OVER
+    //  Shows the end screen for 10 seconds if traced,
+    //  then automatically returns to the start screen.
+    //  Timeout ends instantly as before.
+    // =============================================
+    function gameOver(reason) {
+      clearInterval(state.timerId);
+      cancelAnimationFrame(animFrame);
+      hud.classList.remove('visible');
+
+      const title   = document.getElementById('endTitle');
+      const summary = document.getElementById('endSummary');
+
+      if (reason === 'TRACED') {
+        title.textContent = 'TRACED';
+        title.className   = 'lose';
+
+        // Build a countdown message that counts down from 10
+        let countdown = 10;
+        function buildSummary() {
+          summary.innerHTML = `
+            <b style="color:var(--red)">ICE locked your connection.</b><br>
+            Credits earned: <b style="color:var(--yellow)">¥${state.money.toLocaleString()}</b><br>
+            Targets hacked: ${state.hacksTotal}<br>
+            <span style="color:var(--text);opacity:0.5;font-size:12px;">
+              Returning to main server in ${countdown}s...
+            </span>
+          `;
+        }
+        buildSummary();
+        showScreen('end');
+
+        // Tick the countdown every second, then go to start screen
+        const tracedTimer = setInterval(() => {
+          countdown--;
+          buildSummary();
+          if (countdown <= 0) {
+            clearInterval(tracedTimer);
+            showScreen('start');     // kick back to the start screen
+          }
+        }, 1000);
+
+        // Hide the restart button — traced players can't retry
+        document.getElementById('restartBtn').style.display = 'none';
+
+      } else {
+        // Timeout — go straight to end screen (player can restart manually)
+        title.textContent = 'FLATLINED';
+        title.className   = 'lose';
+        summary.innerHTML = `
+          <b style="color:var(--red)">Time ran out.</b><br>
+          Credits earned: <b style="color:var(--yellow)">¥${state.money.toLocaleString()}</b><br>
+          Targets hacked: ${state.hacksTotal}
+        `;
+        // Show the restart button for non-traced endings
+        document.getElementById('restartBtn').style.display = '';
+        showScreen('end');
+      }
+    }
+
+    // =============================================
+    //  GAME WIN
+    // =============================================
+    function gameWin() {
+      clearInterval(state.timerId);
+      cancelAnimationFrame(animFrame);
+      hud.classList.remove('visible');
+
+      const title   = document.getElementById('endTitle');
+      const summary = document.getElementById('endSummary');
+      title.textContent = 'JACKED OUT';
+      title.className   = 'win';
+      summary.innerHTML = `
+        <b style="color:var(--green)">All targets breached. You vanished into the net.</b><br>
+        Total credits: <b style="color:var(--yellow)">¥${state.money.toLocaleString()}</b><br>
+        Time remaining: ${state.timeLeft}s
+      `;
+      document.getElementById('restartBtn').style.display = '';
+      showScreen('end');
+    }
+
+    // =============================================
+    //  START GAME
+    // =============================================
+    function startGame() {
+      // Reset all state
+      state.money          = 0;
+      state.trace          = 0;
+      state.timeLeft       = 90;
+      state.hacksTotal     = 0;
+      state.day            = 1;   // reset day counter on new game
+      state.selectedTarget = null;
+      state.rebooting      = false;
+      hackedTargets.clear();
+      nodesHackedOnTarget  = 0;
+      targetEl.textContent = '---';
+      logLines.innerHTML   = '<div class="log-line info">Connection established...</div>';
+
+      showScreen('game');
+      hud.classList.add('visible');
+      updateHUD();
+      renderTargets();
+      resizeCanvas();
+      spawnNodes();
+      animate();
+      startTimer();
+
+      log('Select a target to begin.', 'info');
+    }
+
+    // =============================================
+    //  JACK OUT — player escapes with current credits
+    //  Only allowed if they have earned at least some money
+    // =============================================
+    function jackOut() {
+      // Can't jack out with nothing — need at least one hack done
+      if (state.money <= 0) {
+        log('Nothing to take. Hack something first.', 'warn');
+        return;
+      }
+
+      clearInterval(state.timerId);
+      cancelAnimationFrame(animFrame);
+      hud.classList.remove('visible');
+
+      const title   = document.getElementById('endTitle');
+      const summary = document.getElementById('endSummary');
+      title.textContent = 'JACKED OUT';
+      title.className   = 'win';
+      summary.innerHTML = `
+        <b style="color:var(--yellow)">You pulled the plug and vanished.</b><br>
+        Credits secured: <b style="color:var(--yellow)">¥${state.money.toLocaleString()}</b><br>
+        Targets hacked: ${state.hacksTotal}<br>
+        Time remaining: ${state.timeLeft}s<br>
+        <span style="color:var(--text);font-size:12px;opacity:0.7">
+          (${state.hacksTotal >= state.hacksNeeded ? 'Full run complete!' : 'Partial run — left before finishing.'})
+        </span>
+      `;
+      showScreen('end');
+    }
+
+    // =============================================
+    //  BUTTON LISTENERS
+    // =============================================
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+    // Wire up the JACK OUT button in the HUD
+    document.getElementById('jackOutBtn').addEventListener('click', jackOut);
+
+    // Resize canvas if the window changes size
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      if (state.selectedTarget) spawnNodes();
+    });
+  </script>
+</body>
+</html>
