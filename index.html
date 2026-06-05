@@ -277,8 +277,98 @@
     .log-line.info { color: var(--text); opacity: 0.7; }
 
     /* =============================================
-       GAME OVER / WIN SCREEN
+       DAY END OVERLAY
+       Full-screen flash shown between days
        ============================================= */
+    #dayEndOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      text-align: center;
+      animation: fadeInOverlay 0.3s ease;
+    }
+
+    #dayEndOverlay.visible { display: flex; }
+
+    @keyframes fadeInOverlay {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+
+    #dayEndOverlay .day-label {
+      font-size: 11px;
+      letter-spacing: 5px;
+      color: var(--text);
+      opacity: 0.6;
+    }
+
+    #dayEndOverlay .day-number {
+      font-size: clamp(52px, 10vw, 96px);
+      font-weight: bold;
+      color: var(--green);
+      text-shadow: 0 0 30px var(--green);
+      letter-spacing: 4px;
+      line-height: 1;
+    }
+
+    #dayEndOverlay .day-earned {
+      font-size: 16px;
+      color: var(--yellow);
+      letter-spacing: 2px;
+    }
+
+    #dayEndOverlay .day-continue {
+      font-size: 11px;
+      color: var(--text);
+      opacity: 0.5;
+      margin-top: 8px;
+      animation: blink 1.2s step-end infinite;
+    }
+
+    /* DAY counter in HUD */
+    #dayDisplay { color: var(--green); }
+
+    /* Choice buttons inside the day-end overlay */
+    .day-btn {
+      background: transparent;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 3px;
+      padding: 12px 28px;
+      cursor: pointer;
+      text-transform: uppercase;
+      border: 2px solid var(--green);
+      color: var(--green);
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+
+    .day-btn:hover {
+      background: var(--green);
+      color: var(--bg);
+      box-shadow: 0 0 20px var(--green);
+    }
+
+    /* "Lie Low" button uses yellow */
+    .day-btn.lie-btn {
+      border-color: var(--yellow);
+      color: var(--yellow);
+    }
+
+    .day-btn.lie-btn:hover {
+      background: var(--yellow);
+      color: var(--bg);
+      box-shadow: 0 0 20px var(--yellow);
+    }
+
+    /* Colour the trace number based on danger */
+    #traceRevealNumber.safe   { color: var(--green); text-shadow: 0 0 20px var(--green); }
+    #traceRevealNumber.caution{ color: var(--yellow);text-shadow: 0 0 20px var(--yellow);}
+    #traceRevealNumber.danger { color: var(--red);   text-shadow: 0 0 20px var(--red);   }
     #endScreen {
       flex-direction: column;
       align-items: center;
@@ -347,15 +437,17 @@
       <span class="hud-label">CREDITS</span>
       <span class="hud-value" id="moneyDisplay">¥0</span>
     </div>
+    <!-- DAY counter — increments after each successful hack -->
+    <div class="hud-item">
+      <span class="hud-label">DAY</span>
+      <span class="hud-value" id="dayDisplay">1</span>
+    </div>
     <div class="hud-item">
       <span class="hud-label">TARGET</span>
       <span class="hud-value" id="targetDisplay">---</span>
     </div>
-    <div class="hud-item" style="flex:1; max-width:220px;">
-      <span class="hud-label">ICE TRACE</span>
-      <div id="traceBarWrap">
-        <div id="traceBarBg"><div id="traceBarFill"></div></div>
-      </div>
+    <div id="traceBarWrap" style="display:none;">
+      <div id="traceBarBg"><div id="traceBarFill"></div></div>
     </div>
     <div class="hud-item">
       <span class="hud-label">HACKS</span>
@@ -368,6 +460,41 @@
     <!-- JACK OUT: lets the player escape with current credits -->
     <div class="hud-item">
       <button id="jackOutBtn">[ JACK OUT ]</button>
+    </div>
+  </div>
+
+  <!-- ================================================
+       DAY END OVERLAY — shown after each hack with a choice
+       ================================================ -->
+  <div id="dayEndOverlay">
+    <div class="day-label">// DAY COMPLETE //</div>
+    <div class="day-number" id="dayEndNumber">DAY 1</div>
+    <div class="day-earned" id="dayEndEarned">+¥0</div>
+
+    <!-- Step 1: the two choices -->
+    <div id="dayChoices">
+      <p style="color:var(--text);font-size:12px;letter-spacing:2px;margin-bottom:18px;opacity:0.7;">
+        WHAT DO YOU DO NEXT?
+      </p>
+      <div style="display:flex;gap:16px;justify-content:center;">
+        <button class="day-btn" id="hackAgainBtn">[ HACK AGAIN ]</button>
+        <button class="day-btn lie-btn" id="lieLowBtn">[ LIE LOW ]</button>
+      </div>
+    </div>
+
+    <!-- Step 2: shown only when "lie low" chosen — reveals trace % for 10s -->
+    <div id="lieLowReveal" style="display:none;text-align:center;">
+      <p style="color:var(--yellow);font-size:11px;letter-spacing:3px;margin-bottom:12px;">
+        // GOING DARK — SCANNING ICE ACTIVITY //
+      </p>
+      <!-- The big trace number -->
+      <div style="font-size:clamp(48px,9vw,88px);font-weight:bold;letter-spacing:4px;" id="traceRevealNumber">0%</div>
+      <div style="font-size:11px;color:var(--text);opacity:0.6;margin-top:6px;" id="traceRevealLabel">ICE TRACE</div>
+      <!-- Countdown bar -->
+      <div style="width:200px;height:4px;background:#112;border:1px solid var(--border);border-radius:2px;margin:16px auto 0;">
+        <div id="lieLowCountdown" style="height:100%;width:100%;background:var(--yellow);border-radius:2px;transition:width 0.1s linear;"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text);opacity:0.4;margin-top:6px;" id="lieLowTimer">10s</div>
     </div>
   </div>
 
@@ -420,6 +547,7 @@
       timeLeft:    90,          // seconds on the clock
       hacksTotal:  0,           // total successful hacks this session
       hacksNeeded: 5,           // complete this many hacks to win
+      day:         1,           // current day number (advances after each hack)
       selectedTarget: null,     // which target is currently selected
       nodes:       [],          // network nodes drawn on the canvas
       timerId:     null,        // reference to setInterval for the clock
@@ -457,6 +585,7 @@
     const traceBar    = document.getElementById('traceBarFill');
     const hacksEl     = document.getElementById('hacksDisplay');
     const timerEl     = document.getElementById('timerDisplay');
+    const dayEl       = document.getElementById('dayDisplay');   // DAY counter in HUD
     const targetPanel = document.getElementById('targetPanel');
     const logLines    = document.getElementById('logLines');
     const canvas      = document.getElementById('canvas');
@@ -490,6 +619,7 @@
       moneyEl.textContent     = '¥' + state.money.toLocaleString();
       timerEl.textContent     = state.timeLeft;
       hacksEl.textContent     = state.hacksTotal + ' / ' + state.hacksNeeded;
+      dayEl.textContent       = state.day;   // show current day
       traceBar.style.width    = state.trace + '%';
       // Change trace bar colour based on danger level
       traceBar.style.background = state.trace < 50 ? '#00ff88'
@@ -701,7 +831,9 @@
 
     // =============================================
     //  HACK SUCCESS
-    //  Called when player cracks all nodes on a target
+    //  Shows the Day End overlay with two choices:
+    //  "Hack Again" → dismiss and continue immediately
+    //  "Lie Low"    → reveal ICE trace % for 10s, then continue
     // =============================================
     function hackSuccess() {
       const t = state.selectedTarget;
@@ -719,10 +851,81 @@
       renderTargets();
       updateHUD();
 
-      // Did the player win?
-      if (state.hacksTotal >= state.hacksNeeded) {
-        gameWin();
-      }
+      // Pause the game timer while the overlay is shown
+      clearInterval(state.timerId);
+
+      // Populate the overlay header
+      document.getElementById('dayEndNumber').textContent = 'DAY ' + state.day;
+      document.getElementById('dayEndEarned').textContent = '+¥' + t.reward.toLocaleString();
+
+      // Make sure we're on the choices view (not lie-low reveal)
+      document.getElementById('dayChoices').style.display  = 'block';
+      document.getElementById('lieLowReveal').style.display = 'none';
+
+      // Show the overlay
+      const overlay = document.getElementById('dayEndOverlay');
+      overlay.classList.add('visible');
+
+      // Advance the day counter for next time
+      state.day++;
+      updateHUD();
+
+      // --- "HACK AGAIN" button ---
+      // Simply close the overlay and resume the timer
+      document.getElementById('hackAgainBtn').onclick = function () {
+        log(`Day ${state.day - 1} done. Back to work.`, 'warn');
+        overlay.classList.remove('visible');
+        if (state.hacksTotal >= state.hacksNeeded) {
+          gameWin();
+        } else {
+          startTimer();
+        }
+      };
+
+      // --- "LIE LOW" button ---
+      // Hide choices, show the ICE trace % for 10 seconds, then resume
+      document.getElementById('lieLowBtn').onclick = function () {
+        log(`Day ${state.day - 1} done. Lying low...`, 'info');
+
+        // Swap views inside the overlay
+        document.getElementById('dayChoices').style.display   = 'none';
+        document.getElementById('lieLowReveal').style.display = 'block';
+
+        // Set the trace number and colour it by danger level
+        const traceNum = document.getElementById('traceRevealNumber');
+        traceNum.textContent = Math.round(state.trace) + '%';
+        traceNum.className =
+          state.trace < 40 ? 'safe' :
+          state.trace < 70 ? 'caution' : 'danger';
+
+        // Animate the countdown bar draining over 10 seconds
+        const bar      = document.getElementById('lieLowCountdown');
+        const timerTxt = document.getElementById('lieLowTimer');
+        let secondsLeft = 10;
+        bar.style.width = '100%';
+
+        const interval = setInterval(() => {
+          secondsLeft--;
+          // Update the drain bar proportionally
+          bar.style.width = (secondsLeft / 10 * 100) + '%';
+          timerTxt.textContent = secondsLeft + 's';
+
+          if (secondsLeft <= 0) {
+            clearInterval(interval);
+
+            // Lying low reduces trace by 10%
+            state.trace = Math.max(0, state.trace - 10);
+            log('Lay low complete. ICE activity reduced by 10%.', 'ok');
+
+            overlay.classList.remove('visible');
+            if (state.hacksTotal >= state.hacksNeeded) {
+              gameWin();
+            } else {
+              startTimer();
+            }
+          }
+        }, 1000);
+      };
     }
 
     // =============================================
@@ -758,6 +961,9 @@
 
     // =============================================
     //  GAME OVER
+    //  Shows the end screen for 10 seconds if traced,
+    //  then automatically returns to the start screen.
+    //  Timeout ends instantly as before.
     // =============================================
     function gameOver(reason) {
       clearInterval(state.timerId);
@@ -766,14 +972,47 @@
 
       const title   = document.getElementById('endTitle');
       const summary = document.getElementById('endSummary');
-      title.textContent = reason === 'TRACED' ? 'TRACED' : 'FLATLINED';
-      title.className   = 'lose';
-      summary.innerHTML = `
-        <b style="color:var(--red)">${reason === 'TRACED' ? 'ICE locked your connection.' : 'Time ran out.'}</b><br>
-        Credits earned: <b style="color:var(--yellow)">¥${state.money.toLocaleString()}</b><br>
-        Targets hacked: ${state.hacksTotal}
-      `;
-      showScreen('end');
+
+      if (reason === 'TRACED') {
+        title.textContent = 'TRACED';
+        title.className   = 'lose';
+
+        // Build a countdown message that counts down from 10
+        let countdown = 10;
+        function buildSummary() {
+          summary.innerHTML = `
+            <b style="color:var(--red)">ICE locked your connection.</b><br>
+            Credits earned: <b style="color:var(--yellow)">¥${state.money.toLocaleString()}</b><br>
+            Targets hacked: ${state.hacksTotal}<br>
+            <span style="color:var(--text);opacity:0.5;font-size:12px;">
+              Returning to main server in ${countdown}s...
+            </span>
+          `;
+        }
+        buildSummary();
+        showScreen('end');
+
+        // Tick the countdown every second, then go to start screen
+        const tracedTimer = setInterval(() => {
+          countdown--;
+          buildSummary();
+          if (countdown <= 0) {
+            clearInterval(tracedTimer);
+            showScreen('start');     // kick back to the start screen
+          }
+        }, 1000);
+
+      } else {
+        // Timeout — go straight to end screen (player can restart manually)
+        title.textContent = 'FLATLINED';
+        title.className   = 'lose';
+        summary.innerHTML = `
+          <b style="color:var(--red)">Time ran out.</b><br>
+          Credits earned: <b style="color:var(--yellow)">¥${state.money.toLocaleString()}</b><br>
+          Targets hacked: ${state.hacksTotal}
+        `;
+        showScreen('end');
+      }
     }
 
     // =============================================
@@ -805,6 +1044,7 @@
       state.trace          = 0;
       state.timeLeft       = 90;
       state.hacksTotal     = 0;
+      state.day            = 1;   // reset day counter on new game
       state.selectedTarget = null;
       state.rebooting      = false;
       hackedTargets.clear();
