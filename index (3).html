@@ -395,6 +395,186 @@
       animation: blink 1s step-end infinite;
     }
     @keyframes blink { 50% { opacity: 0; } }
+
+    /* =============================================
+       THIS COMPUTER'S STATS BOX — shown on start screen
+       ============================================= */
+    #statsBox {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 18px 24px;
+      max-width: 480px;
+      width: 100%;
+      font-size: 12px;
+    }
+
+    #statsBox .stats-title {
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--text);
+      opacity: 0.5;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+    }
+
+    #statsBox .rank-display {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--yellow);
+      text-shadow: 0 0 12px var(--yellow);
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+
+    #statsBox .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 20px;
+    }
+
+    #statsBox .stat-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text);
+      opacity: 0.8;
+      line-height: 1.8;
+    }
+
+    #statsBox .stat-val {
+      color: var(--green);
+      font-weight: bold;
+    }
+
+    #statsBox .rank-note {
+      margin-top: 10px;
+      font-size: 10px;
+      color: var(--text);
+      opacity: 0.4;
+      letter-spacing: 1px;
+      line-height: 1.7;
+    }
+
+    /* =============================================
+       RANK-UP EMAIL BUTTON (start screen)
+       ============================================= */
+    #emailBtn {
+      display: none;              /* hidden until a rank-up is detected */
+      position: relative;
+      background: transparent;
+      border: 2px solid var(--yellow);
+      color: var(--yellow);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 3px;
+      padding: 10px 24px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+      animation: emailPulse 2s ease-in-out infinite;
+    }
+    #emailBtn:hover {
+      background: var(--yellow);
+      color: var(--bg);
+      box-shadow: 0 0 20px var(--yellow);
+    }
+    /* Red dot badge */
+    #emailBtn::after {
+      content: '1';
+      position: absolute;
+      top: -8px; right: -8px;
+      background: var(--red);
+      color: #fff;
+      font-size: 10px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: bold;
+      line-height: 18px;
+      text-align: center;
+    }
+    @keyframes emailPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,221,0,0.4); }
+      50%       { box-shadow: 0 0 0 8px rgba(255,221,0,0); }
+    }
+
+    /* =============================================
+       EMAIL MODAL OVERLAY
+       ============================================= */
+    #emailModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      animation: fadeInOverlay 0.2s ease;
+    }
+    #emailModal.visible { display: flex; }
+
+    #emailWindow {
+      background: #05100a;
+      border: 1px solid var(--yellow);
+      max-width: 600px;
+      width: 90%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 40px rgba(255,221,0,0.15);
+    }
+
+    #emailHeader {
+      background: #0a1f10;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #emailHeader .email-app-title {
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--text);
+      opacity: 0.5;
+    }
+    #emailCloseBtn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 12px;
+      cursor: pointer;
+      letter-spacing: 2px;
+    }
+    #emailCloseBtn:hover { border-color: var(--red); color: var(--red); }
+
+    #emailMeta {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text);
+      line-height: 2;
+    }
+    #emailMeta .meta-label { opacity: 0.5; }
+    #emailMeta .meta-val   { color: var(--green); }
+    #emailMeta .email-subject { color: var(--yellow); font-size: 14px; font-weight: bold; margin-bottom: 4px; }
+
+    #emailBody {
+      padding: 20px 22px;
+      overflow-y: auto;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.9;
+      white-space: pre-wrap;
+      flex: 1;
+    }
+    #emailBody .obj-main  { color: var(--yellow); font-weight: bold; }
+    #emailBody .obj-req   { color: #88eeff; }
+    #emailBody .obj-sub   { color: var(--green); }
+    #emailBody .obj-side  { color: var(--text); }
+    #emailBody .sig       { margin-top: 20px; opacity: 0.6; font-style: italic; }
   </style>
 </head>
 <body>
@@ -421,9 +601,50 @@
         → Select a <span>TARGET</span> in the left panel<br>
         → <span>CLICK</span> glowing nodes on the canvas<br>
         → Crack enough nodes to hack the target<br>
-        → <span>R</span> to reboot (reset trace — costs time)<br>
+        → <span>R</span> to reboot (wipes trace, but loses your last hack &amp; its credits)<br>
         → <span>[ JACK OUT ]</span> to escape with your credits anytime
       </p>
+    </div>
+
+
+    <div id="statsBox">
+      <div class="stats-title">// THIS COMPUTER'S STATS AT THIS GAME //</div>
+      <div class="rank-display" id="rankDisplay">FIRST TIMER</div>
+      <div class="stats-grid">
+        <div class="stat-row"><span>All-time credits</span><span class="stat-val" id="st-credits">0</span></div>
+        <div class="stat-row"><span>All-time hacks</span><span class="stat-val" id="st-hacks">0</span></div>
+        <div class="stat-row"><span>Total runs</span><span class="stat-val" id="st-runs">0</span></div>
+        <div class="stat-row"><span>Best run (¥)</span><span class="stat-val" id="st-best">0</span></div>
+        <div class="stat-row"><span>Nodes destroyed</span><span class="stat-val" id="st-nodes">0</span></div>
+        <div class="stat-row"><span>Times died</span><span class="stat-val" id="st-deaths">0</span></div>
+        <div class="stat-row"><span>Lethals hacked</span><span class="stat-val" id="st-lethals">0</span></div>
+        <div class="stat-row"><span>Mediums hacked</span><span class="stat-val" id="st-mediums">0</span></div>
+        <div class="stat-row"><span>Easy hacks</span><span class="stat-val" id="st-easys">0</span></div>
+        <div class="stat-row"><span>Total reboots</span><span class="stat-val" id="st-reboots">0</span></div>
+        <div class="stat-row"><span>Game opens</span><span class="stat-val" id="st-opens">0</span></div>
+        <div class="stat-row"><span>All targets cleared</span><span class="stat-val" id="st-allcleared">0×</span></div>
+      </div>
+      <div class="rank-note" id="rankNote"></div>
+    </div>
+
+
+    <!-- RANK-UP email notification button -->
+    <button id="emailBtn">📧 [ NEW EMAIL ]</button>
+
+    <!-- EMAIL MODAL -->
+    <div id="emailModal">
+      <div id="emailWindow">
+        <div id="emailHeader">
+          <span class="email-app-title">// NETRUNNER MAIL //</span>
+          <button id="emailCloseBtn">[ CLOSE ]</button>
+        </div>
+        <div id="emailMeta">
+          <div class="email-subject" id="emailSubject"></div>
+          <div><span class="meta-label">FROM: </span><span class="meta-val" id="emailFrom"></span></div>
+          <div><span class="meta-label">TO:   </span><span class="meta-val">you@netrunner.local</span></div>
+        </div>
+        <div id="emailBody"></div>
+      </div>
     </div>
 
     <button class="btn" id="startBtn">[ JACK IN ]</button>
@@ -542,16 +763,21 @@
     //  All the data the game needs to run
     // =============================================
     const state = {
-      money:       0,           // player's credits (the "money counter")
-      trace:       0,           // ICE trace level 0–100
-      timeLeft:    90,          // seconds on the clock
-      hacksTotal:  0,           // total successful hacks this session
-      hacksNeeded: 10,          // complete this many hacks to win
-      day:         1,           // current day number (advances after each hack)
+      money:          0,        // player's credits (the "money counter")
+      trace:          0,        // ICE trace level 0–100
+      timeLeft:       90,       // seconds on the clock
+      hacksTotal:     0,        // total successful hacks this session
+      hacksNeeded:    10,       // complete this many hacks to win
+      day:            1,        // current day number (advances after each hack)
       selectedTarget: null,     // which target is currently selected
-      nodes:       [],          // network nodes drawn on the canvas
-      timerId:     null,        // reference to setInterval for the clock
-      rebooting:   false,       // true while reboot animation is running
+      nodes:          [],       // network nodes drawn on the canvas
+      timerId:        null,     // reference to setInterval for the clock
+      rebooting:      false,    // true while reboot animation is running
+      // Per-run stat accumulators (saved to localStorage at run end)
+      nodesDestroyed: 0,        // nodes clicked/hacked this run
+      lethalsHacked:  0,        // LETHAL targets completed this run
+      mediumsHacked:  0,        // MEDIUM targets completed this run
+      easysHacked:    0,        // LOW targets completed this run
     };
 
     // =============================================
@@ -604,8 +830,10 @@
       { id: 35, name: "OMEGA Black Site",       reward: 3000, difficulty: "LETHAL", tracePerNode: 30, nodesNeeded: 2 },
     ];
 
-    // Track which targets have been fully hacked
-    const hackedTargets = new Set();
+    // Track which targets have been fully hacked: id → reward paid
+    const hackedTargets = new Map();
+    // Ordered list of hacked target IDs, most recent last (for reboot reversal)
+    const hackedOrder   = [];
     // For the currently selected target, how many nodes hacked so far
     let nodesHackedOnTarget = 0;
 
@@ -837,6 +1065,7 @@
           hit = true;
           node.hacked = true;
           nodesHackedOnTarget++;
+          state.nodesDestroyed++;   // track for all-time nodes stat
 
           // Increase the ICE trace meter
           state.trace = Math.min(100, state.trace + state.selectedTarget.tracePerNode);
@@ -876,7 +1105,12 @@
       const t = state.selectedTarget;
       state.money      += t.reward;
       state.hacksTotal++;
-      hackedTargets.add(t.id);
+      hackedTargets.set(t.id, t.reward);
+      hackedOrder.push(t.id); // record order for reboot reversal
+      // Tally per-difficulty counts for the stats system
+      if      (t.difficulty === 'LETHAL') state.lethalsHacked++;
+      else if (t.difficulty === 'MEDIUM') state.mediumsHacked++;
+      else if (t.difficulty === 'LOW')    state.easysHacked++;
 
       log(`✓ ${t.name} HACKED! +¥${t.reward}`, 'ok');
       log('Transfer complete.', 'ok');
@@ -1038,22 +1272,56 @@
 
     // =============================================
     //  REBOOT (press R)
-    //  Reduces trace by 40% but costs 10 seconds
+    //  Wipes ICE trace completely BUT reverses the most recent hack:
+    //  the credits from that target are deducted and it becomes hackable again.
     // =============================================
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'r' && e.key !== 'R') return;
       if (state.rebooting) return;
+      // Can only reboot during active gameplay (not on overlays or end screens)
+      if (!hud.classList.contains('visible')) return;
+
+      // Must have at least one completed hack to reboot — nothing to reverse otherwise
+      if (hackedOrder.length === 0) {
+        log('No hacks to revert. Nothing to reboot.', 'warn');
+        return;
+      }
 
       state.rebooting = true;
-      log('REBOOT initiated... -40% trace, -10s', 'warn');
+      log('REBOOT initiated... wiping trace, reverting last hack...', 'warn');
+      // Increment all-time reboot counter immediately (it happened even if run ends)
+      const _rs = loadStats(); _rs.reboots++; saveStats(_rs);
 
       setTimeout(() => {
-        state.trace    = Math.max(0, state.trace - 40);
-        state.timeLeft = Math.max(0, state.timeLeft - 10);
+        // ---- Wipe ICE trace completely ----
+        state.trace = 0;
+
+        // ---- Reverse the most recent hack ----
+        const revertId     = hackedOrder.pop();           // remove from order list
+        const revertReward = hackedTargets.get(revertId); // how much it paid
+        hackedTargets.delete(revertId);                   // un-hack it
+
+        // Deduct the credits from that hack
+        state.money      = Math.max(0, state.money - revertReward);
+        state.hacksTotal = Math.max(0, state.hacksTotal - 1);
+
+        // Find the target name for the log message
+        const revertTarget = TARGETS.find(t => t.id === revertId);
+        const revertName   = revertTarget ? revertTarget.name : 'Unknown';
+        // Undo the difficulty bucket count for the reverted hack
+        if (revertTarget) {
+          if      (revertTarget.difficulty === 'LETHAL') state.lethalsHacked = Math.max(0, state.lethalsHacked - 1);
+          else if (revertTarget.difficulty === 'MEDIUM') state.mediumsHacked = Math.max(0, state.mediumsHacked - 1);
+          else if (revertTarget.difficulty === 'LOW')    state.easysHacked   = Math.max(0, state.easysHacked   - 1);
+        }
+
+        log(`Reboot complete. Trace wiped.`, 'ok');
+        log(`"${revertName}" breach reversed. -¥${revertReward.toLocaleString()}`, 'err');
+
         state.rebooting = false;
-        log('Reboot complete.', 'ok');
+        renderTargets(); // re-enable the reverted target in the list
         updateHUD();
-      }, 1500); // 1.5 second delay to make it feel dangerous
+      }, 1500); // brief delay so it feels dangerous
     });
 
     // =============================================
@@ -1098,6 +1366,8 @@
           `;
         }
         buildSummary();
+        saveRunStats('traced');   // persist stats before showing end screen
+        updateStatsDisplay();
         showScreen('end');
 
         // Tick the countdown every second, then go to start screen
@@ -1124,6 +1394,8 @@
         `;
         // Show the restart button for non-traced endings
         document.getElementById('restartBtn').style.display = '';
+        saveRunStats('timeout');   // persist stats
+        updateStatsDisplay();
         showScreen('end');
       }
     }
@@ -1146,6 +1418,8 @@
         Time remaining: ${state.timeLeft}s
       `;
       document.getElementById('restartBtn').style.display = '';
+      saveRunStats('win');   // persist stats
+      updateStatsDisplay();
       showScreen('end');
     }
 
@@ -1162,7 +1436,13 @@
       state.selectedTarget = null;
       state.rebooting      = false;
       hackedTargets.clear();
+      hackedOrder.length = 0;    // reset reboot history
       nodesHackedOnTarget  = 0;
+      // Reset per-run stat accumulators
+      state.nodesDestroyed = 0;
+      state.lethalsHacked  = 0;
+      state.mediumsHacked  = 0;
+      state.easysHacked    = 0;
       targetEl.textContent = '---';
       logLines.innerHTML   = '<div class="log-line info">Connection established...</div>';
 
@@ -1206,6 +1486,8 @@
           (${state.hacksTotal >= state.hacksNeeded ? 'Full run complete!' : 'Partial run — left before finishing.'})
         </span>
       `;
+      saveRunStats('jackout');   // persist stats
+      updateStatsDisplay();
       showScreen('end');
     }
 
@@ -1217,6 +1499,621 @@
     // Wire up the JACK OUT button in the HUD
     document.getElementById('jackOutBtn').addEventListener('click', jackOut);
 
+
+    // =============================================
+    //  PERSISTENT STATS (localStorage)
+    //  All stats survive page refresh / re-open.
+    //  "all-time" means cumulative across all runs.
+    // =============================================
+    const STATS_KEY = 'netrunner_stats_v1';
+
+    // Load stats from localStorage, or start fresh
+    function loadStats() {
+      try {
+        return JSON.parse(localStorage.getItem(STATS_KEY)) || defaultStats();
+      } catch(e) { return defaultStats(); }
+    }
+
+    function defaultStats() {
+      return {
+        credits:        0,   // all-time credits earned across all runs
+        hacks:          0,   // all-time successful hacks
+        runs:           0,   // total game sessions started
+        bestRun:        0,   // highest single-run credit total
+        nodes:          0,   // total nodes destroyed across all runs
+        deaths:         0,   // times traced/flatlined
+        lethals:        0,   // LETHAL-tier targets hacked
+        mediums:        0,   // MEDIUM-tier targets hacked
+        easys:          0,   // LOW-tier targets hacked
+        reboots:        0,   // total R key reboots
+        opens:          0,   // total times game page opened
+        allClearedCount:0,   // how many times ALL 35 targets cleared in one run
+        targetHackCounts:{}, // id → how many times that target has been hacked (all time)
+      };
+    }
+
+    function saveStats(s) {
+      try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch(e) {}
+    }
+
+    // =============================================
+    //  RANK ENGINE
+    //  Rules from spreadsheet:
+    //   - Must always meet the Main requirement
+    //   - If Requirement met → need 2 of the 2 side requirements
+    //   - If Requirement NOT met → need ALL 3 other objectives (Req.sub + both sides)
+    //  Highest rank whose full condition set is satisfied is awarded.
+    // =============================================
+    const RANKS = [
+      // GOD — highest, check first (reverse order from spreadsheet)
+      {
+        name: 'GOD',
+        main:  s => s.allClearedCount >= 20,
+        req:   s => s.deaths < 3,
+        sub:   s => s.credits >= 100000,
+        side1: s => s.deaths >= 1,         // "Died more than once" — at least 1 death
+        side2: s => s.reboots >= 3,
+      },
+      {
+        name: 'King of Hacking',
+        main:  s => s.hacks >= 400,
+        req:   s => s.credits >= 40000,
+        sub:   s => s.nodes >= 300,
+        side1: s => s.reboots >= 1,
+        side2: s => s.deaths < 60,
+      },
+      {
+        name: 'Baron',
+        main:  s => s.opens >= 3,
+        req:   s => s.hacks >= 250,
+        sub:   s => s.hacks >= 240,
+        side1: s => s.easys  >= 80,
+        side2: s => s.hacks >= 300,
+      },
+      {
+        name: 'Master',
+        main:  s => s.allClearedCount >= 2,
+        req:   s => s.deaths < 70,
+        sub:   s => s.bestRun >= 2400,
+        side1: s => s.mediums >= 50,
+        side2: s => s.hacks >= 250,
+      },
+      {
+        name: 'Leonardo de Hacker',
+        main:  s => s.credits >= 20000,
+        req:   s => s.deaths < 30,
+        sub:   s => s.hacks >= 100,
+        side1: s => s.mediums >= 50,
+        side2: s => s.hacks >= 250,
+      },
+      {
+        name: 'Famous Hacker',
+        main:  s => s.allClearedCount >= 1,
+        req:   s => s.deaths < 40,
+        sub:   s => s.credits >= 5000,
+        side1: s => s.lethals >= 6,
+        side2: s => s.bestRun >= 2000,
+      },
+      {
+        name: 'Hacker Gang Leader',
+        main:  s => s.allClearedCount >= 1,
+        req:   s => s.lethals >= 4,
+        sub:   s => s.credits >= 5000,
+        side1: s => s.deaths < 15,
+        side2: s => s.bestRun >= 1200,
+      },
+      {
+        name: 'Hacker Gang Secondary Leader',
+        main:  s => s.credits >= 3500,
+        req:   s => s.hacks >= 50,
+        sub:   s => s.mediums >= 20,
+        side1: s => s.deaths < 20,
+        side2: s => s.credits >= 3500,
+      },
+      {
+        name: 'Hacker Gang Member',
+        main:  s => s.credits >= 2500,
+        req:   s => s.lethals >= 1,
+        sub:   s => s.runs >= 35,
+        side1: s => s.deaths < 20,
+        side2: s => s.credits >= 3500,
+      },
+      {
+        name: 'Hacker',
+        main:  s => s.credits >= 1500,
+        req:   s => s.hacks >= 14,
+        sub:   s => s.bestRun >= 500,
+        side1: s => s.deaths < 20,
+        side2: s => s.nodes >= 25,
+      },
+      {
+        name: 'School Hacker',
+        main:  s => s.credits >= 900,
+        req:   s => s.hacks >= 10,
+        sub:   s => s.nodes >= 20,
+        side1: s => s.deaths < 14,
+        side2: s => s.bestRun >= 200,
+      },
+      {
+        name: 'Rookie',
+        main:  s => s.credits >= 500,
+        req:   s => s.hacks >= 6,
+        sub:   s => s.bestRun >= 150,
+        side1: s => s.deaths < 10,
+        side2: s => s.nodes >= 10,
+      },
+      {
+        name: 'Hacker in Training',
+        main:  s => s.credits >= 300,
+        req:   s => s.hacks >= 2,
+        sub:   s => s.nodes >= 5,
+        side1: s => s.deaths < 3,
+        side2: s => s.bestRun >= 150,
+      },
+    ];
+
+    // Evaluate a rank entry against current stats.
+    // Returns true if the player qualifies.
+    function qualifiesForRank(rank, s) {
+      if (!rank.main(s)) return false;  // must always pass main
+
+      const reqPasses  = rank.req(s);
+      const subPasses  = rank.sub(s);
+      const side1Passes = rank.side1(s);
+      const side2Passes = rank.side2(s);
+
+      if (reqPasses) {
+        // Requirement met → need 2 of the 2 side objectives
+        return side1Passes && side2Passes;
+      } else {
+        // Requirement NOT met → need all 3 other objectives (sub + side1 + side2)
+        return subPasses && side1Passes && side2Passes;
+      }
+    }
+
+    function calculateRank(s) {
+      for (const rank of RANKS) {
+        if (qualifiesForRank(rank, s)) return rank.name;
+      }
+      return 'First Timer';
+    }
+
+    // Build a short human-readable note about what's needed for the next rank
+    function nextRankNote(s) {
+      // Find the first rank the player does NOT qualify for, starting from top
+      // Actually find the rank just above current
+      const currentRank = calculateRank(s);
+      const currentIdx  = RANKS.findIndex(r => r.name === currentRank);
+      const nextRank    = currentIdx === -1 ? RANKS[RANKS.length - 1] : RANKS[currentIdx - 1];
+      if (!nextRank) return 'You have reached the highest rank.';
+
+      const parts = [];
+      if (!nextRank.main(s))  parts.push('Main objective not met');
+      if (!nextRank.req(s))   parts.push('Requirement not met (all 3 others needed)');
+      if (!nextRank.sub(s))   parts.push('Sub-objective not met');
+      if (!nextRank.side1(s)) parts.push('Side req 1 not met');
+      if (!nextRank.side2(s)) parts.push('Side req 2 not met');
+
+      return 'Next rank: ' + nextRank.name + (parts.length ? ' — ' + parts.join(', ') : ' — almost there!');
+    }
+
+    // =============================================
+    //  UPDATE STATS DISPLAY on start screen
+    // =============================================
+    function updateStatsDisplay() {
+      const s = loadStats();
+      const rank = calculateRank(s);
+
+      document.getElementById('rankDisplay').textContent   = rank.toUpperCase();
+      document.getElementById('st-credits').textContent   = '¥' + s.credits.toLocaleString();
+      document.getElementById('st-hacks').textContent     = s.hacks;
+      document.getElementById('st-runs').textContent      = s.runs;
+      document.getElementById('st-best').textContent      = '¥' + s.bestRun.toLocaleString();
+      document.getElementById('st-nodes').textContent     = s.nodes;
+      document.getElementById('st-deaths').textContent    = s.deaths;
+      document.getElementById('st-lethals').textContent   = s.lethals;
+      document.getElementById('st-mediums').textContent   = s.mediums;
+      document.getElementById('st-easys').textContent     = s.easys;
+      document.getElementById('st-reboots').textContent   = s.reboots;
+      document.getElementById('st-opens').textContent     = s.opens;
+      document.getElementById('st-allcleared').textContent = s.allClearedCount + '×';
+      document.getElementById('rankNote').textContent     = nextRankNote(s);
+      // Re-check rank up state after every stats update
+      if (typeof checkRankUp === 'function') checkRankUp();
+    }
+
+    // =============================================
+    //  SAVE END-OF-RUN STATS
+    //  Called by gameOver, gameWin, and jackOut
+    //  'outcome': 'traced' | 'timeout' | 'win' | 'jackout'
+    // =============================================
+    function saveRunStats(outcome) {
+      const s = loadStats();
+
+      s.runs++;
+      s.credits += state.money;
+      s.hacks   += state.hacksTotal;
+      s.nodes   += state.nodesDestroyed || 0;
+      if (state.money > s.bestRun) s.bestRun = state.money;
+
+      // Difficulty-bucketed hack counts
+      s.lethals  += state.lethalsHacked  || 0;
+      s.mediums  += state.mediumsHacked  || 0;
+      s.easys    += state.easysHacked    || 0;
+
+      // Deaths: traced or timeout counts as dying
+      if (outcome === 'traced' || outcome === 'timeout') s.deaths++;
+
+      // All-targets-cleared: if every target was hacked this run
+      if (hackedTargets.size === TARGETS.length) s.allClearedCount++;
+
+      // Per-target hack count (for "destroyed all targets more than N times")
+      if (!s.targetHackCounts) s.targetHackCounts = {};
+      hackedTargets.forEach((reward, id) => {
+        s.targetHackCounts[id] = (s.targetHackCounts[id] || 0) + 1;
+      });
+
+      saveStats(s);
+    }
+
+    // =============================================
+    //  INCREMENT GAME OPENS on page load
+    // =============================================
+    (function() {
+      const s = loadStats();
+      s.opens++;
+      saveStats(s);
+      updateStatsDisplay();
+      checkRankUp();
+    })();
+
+
+    // =============================================
+    //  RANK-UP EMAIL SYSTEM
+    //  Detects when rank improves, shows a notification
+    //  button, and generates a thematic email from the
+    //  next-rank organisation about upcoming objectives.
+    // =============================================
+
+    // Human-readable labels for each rank objective (used in email body)
+    const RANK_LABELS = {
+      'Hacker in Training': {
+        mainLabel:  'Earn over ¥300 in total credits (all time)',
+        reqLabel:   'Achieve more than 2 all-time successful hacks',
+        subLabel:   'Destroy more than 5 nodes overall',
+        side1Label: 'Die fewer than 3 times total',
+        side2Label: 'Achieve a best single-run score above ¥150',
+      },
+      'Rookie': {
+        mainLabel:  'Earn over ¥500 in total credits (all time)',
+        reqLabel:   'Accumulate more than 6 all-time hacks',
+        subLabel:   'Achieve a best single-run score above ¥150',
+        side1Label: 'Die fewer than 10 times total',
+        side2Label: 'Destroy more than 10 nodes overall',
+      },
+      'School Hacker': {
+        mainLabel:  'Earn over ¥900 in total all-time credits',
+        reqLabel:   'Accumulate more than 10 all-time hacks',
+        subLabel:   'Destroy more than 20 nodes overall',
+        side1Label: 'Die fewer than 14 times total',
+        side2Label: 'Achieve a best single-run score above ¥200',
+      },
+      'Hacker': {
+        mainLabel:  'Earn over ¥1,500 in total all-time credits',
+        reqLabel:   'Accumulate more than 14 all-time hacks',
+        subLabel:   'Achieve a best single-run score above ¥500',
+        side1Label: 'Die fewer than 20 times total',
+        side2Label: 'Destroy more than 25 nodes overall',
+      },
+      'Hacker Gang Member': {
+        mainLabel:  'Earn over ¥2,500 in total all-time credits',
+        reqLabel:   'Successfully hack at least 1 LETHAL-tier target',
+        subLabel:   'Complete more than 35 total runs',
+        side1Label: 'Die fewer than 20 times total',
+        side2Label: 'Earn over ¥3,500 in total credits',
+      },
+      'Hacker Gang Secondary Leader': {
+        mainLabel:  'Earn over ¥3,500 in total all-time credits',
+        reqLabel:   'Accumulate more than 50 all-time hacks',
+        subLabel:   'Hack more than 20 MEDIUM-tier targets',
+        side1Label: 'Die fewer than 20 times total',
+        side2Label: 'Earn over ¥3,500 in total credits',
+      },
+      'Hacker Gang Leader': {
+        mainLabel:  'Clear ALL targets at least once in a single run',
+        reqLabel:   'Successfully hack 4 or more LETHAL-tier targets',
+        subLabel:   'Earn over ¥5,000 in total credits',
+        side1Label: 'Die fewer than 15 times total',
+        side2Label: 'Achieve a best single-run score above ¥1,200',
+      },
+      'Famous Hacker': {
+        mainLabel:  'Clear ALL targets at least once in a single run',
+        reqLabel:   'Die fewer than 40 times total',
+        subLabel:   'Earn over ¥5,000 in total credits',
+        side1Label: 'Successfully hack 6 or more LETHAL-tier targets',
+        side2Label: 'Achieve a best single-run score above ¥2,000',
+      },
+      'Leonardo de Hacker': {
+        mainLabel:  'Earn over ¥20,000 in total all-time credits',
+        reqLabel:   'Die fewer than 30 times total',
+        subLabel:   'Accumulate more than 100 all-time hacks',
+        side1Label: 'Hack more than 50 MEDIUM-tier targets',
+        side2Label: 'Accumulate more than 250 all-time hacks',
+      },
+      'Master': {
+        mainLabel:  'Clear ALL targets more than twice in single runs',
+        reqLabel:   'Die fewer than 70 times total',
+        subLabel:   'Achieve a best single-run score above ¥2,400',
+        side1Label: 'Hack more than 50 MEDIUM-tier targets',
+        side2Label: 'Accumulate more than 250 all-time hacks',
+      },
+      'Baron': {
+        mainLabel:  'Open the game at least 3 times',
+        reqLabel:   'Accumulate more than 250 all-time hacks',
+        subLabel:   'Accumulate more than 240 all-time hacks',
+        side1Label: 'Hack more than 80 LOW-tier (easy) targets',
+        side2Label: 'Accumulate more than 300 all-time hacks',
+      },
+      'King of Hacking': {
+        mainLabel:  'Accumulate more than 400 all-time hacks',
+        reqLabel:   'Earn over ¥40,000 in total credits',
+        subLabel:   'Destroy more than 300 nodes overall',
+        side1Label: 'Use the reboot function at least once',
+        side2Label: 'Die fewer than 60 times total',
+      },
+      'GOD': {
+        mainLabel:  'Clear ALL targets more than 20 times across runs',
+        reqLabel:   'Die fewer than 3 times total',
+        subLabel:   'Earn over ¥100,000 in total credits',
+        side1Label: 'Die at least once (you must have faced risk)',
+        side2Label: 'Use the reboot function at least 3 times',
+      },
+    };
+
+    // Tone config per rank — controls email style
+    const RANK_TONE = {
+      'Hacker in Training':           { tone: 'casual',   sender: 'some_random_hacker_lol@darkweb.net' },
+      'Rookie':                        { tone: 'casual',   sender: 'rookie_zone@netboard.onion' },
+      'School Hacker':                 { tone: 'casual',   sender: 'school_crew_hq@netboard.onion' },
+      'Hacker':                        { tone: 'medium',   sender: 'hacker_council@shadownet.onion' },
+      'Hacker Gang Member':            { tone: 'medium',   sender: 'gang.recruitment@shadowcell.onion' },
+      'Hacker Gang Secondary Leader':  { tone: 'medium',   sender: 'leadership@shadowcell.onion' },
+      'Hacker Gang Leader':            { tone: 'formal',   sender: 'gang.high.command@nexusnet.onion' },
+      'Famous Hacker':                 { tone: 'formal',   sender: 'fame.bureau@nexusnet.onion' },
+      'Leonardo de Hacker':            { tone: 'formal',   sender: 'elite.registry@zeroday.onion' },
+      'Master':                        { tone: 'intense',  sender: 'The.Council@cipher-zero.onion' },
+      'Baron':                         { tone: 'intense',  sender: 'Baron.Secretariat@cipher-zero.onion' },
+      'King of Hacking':               { tone: 'intense',  sender: 'KOTH.Registry@OMEGA-node.onion' },
+      'GOD':                           { tone: 'intense',  sender: 'SYSTEM@OMEGA-node.onion' },
+    };
+
+    // Generate the full email text for a given next rank
+    function generateEmail(nextRankName, s) {
+      const labels = RANK_LABELS[nextRankName];
+      const tone   = RANK_TONE[nextRankName] || { tone: 'casual', sender: 'unknown@darkweb.net' };
+      if (!labels) return null;
+
+      const reqMet = RANKS.find(r => r.name === nextRankName)?.req(s);
+
+      // How the rank system works (always included, tone-adjusted)
+      const systemExplainer = {
+        casual: `\nso here's how ranks work btw:\n- you gotta hit the MAIN TASK no matter what, thats non-negotiable\n- if you hit the REQUIREMENT too, you just need the 2 SIDE OBJECTIVES and youre good\n- if you MISS the requirement tho you gotta do ALL THREE of the other objectives (the sub one + both sides)\n- pretty simple tbh\n`,
+        medium: `\n--- HOW RANKING WORKS ---\nTo claim any rank you must complete the Main Task — that's mandatory.\nIf you also satisfy the Requirement, you only need to complete both Side Objectives.\nFail the Requirement and you must complete all three remaining objectives: the Sub-Objective and both Side Objectives.\n`,
+        formal: `\n— RANK PROGRESSION PROTOCOL —\nEvery rank demands completion of the designated Main Task without exception.\nShould the Requirement also be fulfilled, only the two Side Objectives need satisfaction.\nIn the event the Requirement is not met, all three secondary objectives — the Sub-Objective and both Side Objectives — must be completed in full.\n`,
+        intense: `\n[[ CLASSIFICATION: OPERATIVE BRIEFING ]]\nThe Main Task is absolute. Failure to complete it disqualifies advancement regardless of all other metrics.\nFulfil the Requirement and the two Side Objectives suffice for promotion.\nFail the Requirement and every remaining objective — Sub-Objective, Side Objective I, Side Objective II — must all be completed. No exceptions. No appeals.\n`,
+      }[tone.tone];
+
+      const emails = {
+        casual: () => {
+          const reqStatus = reqMet
+            ? `looks like youre on track for the requirement so you only need the 2 side goals`
+            : `you havent hit the requirement yet so you need ALL THREE of the other objectives`;
+          return `yo,
+
+heard youre trying to rank up to ${nextRankName.toUpperCase()}. sick. heres what you need to do:
+
+🔴 MAIN TASK (you MUST do this):
+   ${labels.mainLabel}
+
+🔵 REQUIREMENT:
+   ${labels.reqLabel}
+   (${reqStatus})
+
+if you DONt hit the req, do all of these:
+   → SUB-OBJECTIVE: ${labels.subLabel}
+   → SIDE GOAL 1: ${labels.side1Label}
+   → SIDE GOAL 2: ${labels.side2Label}
+
+if you DO hit the req, just do:
+   → SIDE GOAL 1: ${labels.side1Label}
+   → SIDE GOAL 2: ${labels.side2Label}
+${systemExplainer}
+good luck out there lmao dont get traced
+
+— someone who knows`;
+        },
+
+        medium: () => {
+          const reqStatus = reqMet
+            ? `You're currently meeting the Requirement — keep it up, and you'll only need the Side Objectives.`
+            : `You haven't met the Requirement yet. Complete all three secondary objectives to compensate.`;
+          return `Operative,
+
+You are being evaluated for promotion to rank: ${nextRankName.toUpperCase()}.
+Study the following objectives carefully.
+
+[ MAIN TASK — MANDATORY ]
+  ${labels.mainLabel}
+
+[ REQUIREMENT ]
+  ${labels.reqLabel}
+  Status note: ${reqStatus}
+
+[ SUB-OBJECTIVE ] (needed only if Requirement is not met)
+  ${labels.subLabel}
+
+[ SIDE OBJECTIVE I ]
+  ${labels.side1Label}
+
+[ SIDE OBJECTIVE II ]
+  ${labels.side2Label}
+${systemExplainer}
+Do not contact us. We will be watching your runs.
+
+— Rank Council`;
+        },
+
+        formal: () => {
+          const reqStatus = reqMet
+            ? `Current assessment: Requirement criteria satisfied. Side Objectives I and II are sufficient for advancement.`
+            : `Current assessment: Requirement criteria NOT satisfied. You must complete the Sub-Objective in addition to both Side Objectives.`;
+          return `To Whom It May Concern,
+
+This is an official communication regarding your eligibility assessment for the rank of ${nextRankName.toUpperCase()}.
+
+Following a review of your operational performance metrics, the following objectives have been identified as outstanding for rank confirmation.
+
+MANDATORY — MAIN TASK:
+  ${labels.mainLabel}
+  This criterion is non-negotiable and must be satisfied under all circumstances.
+
+REQUIREMENT:
+  ${labels.reqLabel}
+  ${reqStatus}
+
+SECONDARY OBJECTIVES:
+
+  Sub-Objective (required only if Requirement is unfulfilled):
+    ${labels.subLabel}
+
+  Side Objective I:
+    ${labels.side1Label}
+
+  Side Objective II:
+    ${labels.side2Label}
+${systemExplainer}
+This document is encrypted and intended solely for the operative designated as the recipient. Any unauthorised disclosure is a breach of operational security.
+
+Regards,
+Office of Rank Certification
+${tone.sender}`;
+        },
+
+        intense: () => {
+          const reqStatus = reqMet
+            ? `REQUIREMENT STATUS: ACTIVE — you are tracking. Side Objectives I and II are the remaining conditions.`
+            : `REQUIREMENT STATUS: FAILED — Sub-Objective, Side Objective I, and Side Objective II are ALL mandatory.`;
+          return `[[ ENCRYPTED TRANSMISSION — PRIORITY ALPHA ]]
+[[ RECIPIENT: OPERATIVE — EYES ONLY ]]
+
+Target rank: ${nextRankName.toUpperCase()}
+
+Complacency ends here. The following parameters govern your advancement. Each is binding.
+
+[MAIN TASK — ABSOLUTE REQUIREMENT]
+  ${labels.mainLabel}
+  This is the only condition that cannot be substituted. Non-completion terminates evaluation.
+
+[REQUIREMENT]
+  ${labels.reqLabel}
+  ${reqStatus}
+
+[SUB-OBJECTIVE]
+  ${labels.subLabel}
+  Required if Requirement is unmet. No exceptions.
+
+[SIDE OBJECTIVE I]
+  ${labels.side1Label}
+
+[SIDE OBJECTIVE II]
+  ${labels.side2Label}
+${systemExplainer}
+You are being monitored. Every run. Every node. Every death.
+
+Fail and the rank will not be awarded. There are no second evaluations at this level.
+
+[[ END TRANSMISSION ]]
+${tone.sender}`;
+        },
+      };
+
+      return {
+        subject: `RANK OPPORTUNITY: ${nextRankName.toUpperCase()} — Objectives Briefing`,
+        from:    tone.sender,
+        body:    emails[tone.tone](),
+      };
+    }
+
+    // =============================================
+    //  RANK-UP DETECTION + EMAIL BUTTON
+    //  Compare current rank to last-seen rank in localStorage.
+    //  If it improved, show the email button.
+    // =============================================
+    const PREV_RANK_KEY = 'netrunner_prev_rank_v1';
+    const EMAIL_READ_KEY = 'netrunner_email_read_v1';
+
+    function checkRankUp() {
+      const s           = loadStats();
+      const currentRank = calculateRank(s);
+      const prevRank    = localStorage.getItem(PREV_RANK_KEY) || 'First Timer';
+      const emailRead   = localStorage.getItem(EMAIL_READ_KEY) === currentRank;
+
+      // Find the next rank above current (index - 1 in the RANKS array)
+      const currentIdx  = RANKS.findIndex(r => r.name === currentRank);
+      const nextRank    = currentIdx === -1 ? RANKS[RANKS.length - 1] : RANKS[currentIdx - 1];
+
+      const emailBtn = document.getElementById('emailBtn');
+
+      // Show button if: rank went up AND the email for this rank hasn't been dismissed
+      if (currentRank !== prevRank && !emailRead && nextRank) {
+        emailBtn.style.display = 'block';
+        // Store new rank as seen
+        localStorage.setItem(PREV_RANK_KEY, currentRank);
+      } else if (!emailRead && nextRank && prevRank === 'First Timer' && currentRank === 'First Timer') {
+        // First-ever session: show welcome email too
+        emailBtn.style.display = 'none';
+      } else if (!emailRead && nextRank) {
+        // Unread email from a previous rank-up still pending
+        emailBtn.style.display = 'block';
+      }
+    }
+
+    // Open the email modal
+    document.getElementById('emailBtn').addEventListener('click', () => {
+      const s        = loadStats();
+      const currRank = calculateRank(s);
+      const currIdx  = RANKS.findIndex(r => r.name === currRank);
+      const nextRank = currIdx === -1 ? RANKS[RANKS.length - 1] : RANKS[currIdx - 1];
+      if (!nextRank) return;
+
+      const email = generateEmail(nextRank.name, s);
+      if (!email) return;
+
+      document.getElementById('emailSubject').textContent = email.subject;
+      document.getElementById('emailFrom').textContent    = email.from;
+      document.getElementById('emailBody').textContent    = email.body;
+      document.getElementById('emailModal').classList.add('visible');
+    });
+
+    // Close the email modal
+    document.getElementById('emailCloseBtn').addEventListener('click', () => {
+      document.getElementById('emailModal').classList.remove('visible');
+      // Mark email as read — hide button
+      const s        = loadStats();
+      const currRank = calculateRank(s);
+      localStorage.setItem(EMAIL_READ_KEY, currRank);
+      document.getElementById('emailBtn').style.display = 'none';
+    });
+
+    // Close on backdrop click
+    document.getElementById('emailModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('emailModal')) {
+        document.getElementById('emailCloseBtn').click();
+      }
+    });
+
+    // ── Call checkRankUp on page load (after stats are loaded) ──
+    // We hook into the existing IIFE that runs on load
     // Resize canvas if the window changes size
     window.addEventListener('resize', () => {
       resizeCanvas();
